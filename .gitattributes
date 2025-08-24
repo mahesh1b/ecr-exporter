@@ -1,0 +1,19 @@
+# Set default behavior to automatically normalize line endings
+* text=auto
+
+# Go files should use LF
+*.go text eol=lf
+*.mod text eol=lf
+*.sum text eol=lf
+
+# Shell scripts should use LF
+*.sh text eol=lf
+
+# Windows files should use CRLF
+*.bat text eol=crlf
+*.ps1 text eol=crlf
+
+# Binary files should not be modified
+*.exe binary
+*.dll binary
+*.so binary
