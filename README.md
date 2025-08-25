@@ -1,5 +1,9 @@
 # ECR Prometheus Exporter
 
+[![CI](https://github.com/your-username/ecr-prometheus-exporter/workflows/CI/badge.svg)](https://github.com/your-username/ecr-prometheus-exporter/actions)
+[![Go Report Card](https://goreportcard.com/badge/github.com/your-username/ecr-prometheus-exporter)](https://goreportcard.com/report/github.com/your-username/ecr-prometheus-exporter)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 A Prometheus exporter for AWS Elastic Container Registry (ECR) that provides comprehensive metrics about your container repositories and images.
 
 ## Metrics Exported
@@ -137,6 +141,57 @@ avg(ecr_image_size_avg_bytes) by (repository_name)
 
 # Repositories not pulled recently (> 30 days)
 ecr_latest_pull_timestamp < (time() - 30*24*3600)
+```
+
+## Development
+
+### Prerequisites
+
+- Go 1.21 or later
+- golangci-lint (for linting)
+- gosec (for security scanning)
+
+### Quick Start
+
+```bash
+# Install development tools
+make install-tools
+
+# Run all checks
+make check
+
+# Build and run locally
+make build
+make run
+
+# Run with debug logging
+make dev
+```
+
+### Available Make Targets
+
+```bash
+make help          # Show all available targets
+make build         # Build binary
+make test          # Run tests
+make lint          # Run linter
+make security      # Run security scan
+make clean         # Clean build artifacts
+```
+
+### CI/CD
+
+The project includes comprehensive CI/CD workflows:
+
+- **GitHub Actions**: Automated testing, linting, security scanning, and building
+- **Pre-commit hooks**: Local code quality checks before commits
+- **Multi-platform builds**: Linux, macOS, and Windows binaries
+
+To set up pre-commit hooks:
+
+```bash
+pip install pre-commit
+pre-commit install
 ```
 
 ## IAM Policy
