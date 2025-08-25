@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"net/http"
 	"os"
@@ -196,8 +197,17 @@ func configureLogging() {
 }
 
 func main() {
+	// Handle version flag
+	showVersion := flag.Bool("version", false, "Show version and exit")
+	flag.Parse()
+
+	if *showVersion {
+		fmt.Printf("ECR Prometheus Exporter %s\n", version)
+		os.Exit(0)
+	}
+
 	configureLogging()
-	log.Info("Starting ECR Prometheus Exporter")
+	log.WithField("version", version).Info("Starting ECR Prometheus Exporter")
 
 	// Load AWS configuration
 	log.Info("Loading AWS configuration...")
@@ -246,6 +256,7 @@ func main() {
 			</head>
 			<body>
 				<h1>ECR Prometheus Exporter</h1>
+				<p>Version: <strong>` + version + `</strong></p>
 				<p>Monitor your AWS ECR repositories with Prometheus metrics</p>
 				
 				<h2>Available Endpoints:</h2>
