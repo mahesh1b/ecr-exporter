@@ -40,27 +40,39 @@ jobs:
         mkdir -p dist
         
         # Build for multiple platforms
-        GOOS=linux GOARCH=amd64 go build -ldflags="-X main.version=${{ steps.version.outputs.VERSION }}" -o dist/ecr-prometheus-exporter-linux-amd64 .
-        GOOS=linux GOARCH=arm64 go build -ldflags="-X main.version=${{ steps.version.outputs.VERSION }}" -o dist/ecr-prometheus-exporter-linux-arm64 .
-        GOOS=darwin GOARCH=amd64 go build -ldflags="-X main.version=${{ steps.version.outputs.VERSION }}" -o dist/ecr-prometheus-exporter-darwin-amd64 .
-        GOOS=darwin GOARCH=arm64 go build -ldflags="-X main.version=${{ steps.version.outputs.VERSION }}" -o dist/ecr-prometheus-exporter-darwin-arm64 .
-        GOOS=windows GOARCH=amd64 go build -ldflags="-X main.version=${{ steps.version.outputs.VERSION }}" -o dist/ecr-prometheus-exporter-windows-amd64.exe .
+        GOOS=linux GOARCH=amd64 go build -ldflags="-X main.version=${{ steps.version.outputs.VERSION }}" -o dist/ecr-exporter-linux-amd64 .
+        GOOS=linux GOARCH=arm64 go build -ldflags="-X main.version=${{ steps.version.outputs.VERSION }}" -o dist/ecr-exporter-linux-arm64 .
+        GOOS=darwin GOARCH=amd64 go build -ldflags="-X main.version=${{ steps.version.outputs.VERSION }}" -o dist/ecr-exporter-darwin-amd64 .
+        GOOS=darwin GOARCH=arm64 go build -ldflags="-X main.version=${{ steps.version.outputs.VERSION }}" -o dist/ecr-exporter-darwin-arm64 .
+        GOOS=windows GOARCH=amd64 go build -ldflags="-X main.version=${{ steps.version.outputs.VERSION }}" -o dist/ecr-exporter-windows-amd64.exe .
         
         # Create checksums
         cd dist
         sha256sum * > checksums.txt
 
+    - name: Extract metadata (tags, labels) for Docker
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ secrets.DOCKERHUB_USERNAME }}/ecr-exporter
+
     - name: Build and push Docker image
+      id: push
       uses: docker/build-push-action@v5
       with:
         context: .
         platforms: linux/amd64,linux/arm64
         push: true
         tags: |
-          ${{ secrets.DOCKERHUB_USERNAME }}/ecr-prometheus-exporter:${{ steps.version.outputs.VERSION }}
-          ${{ secrets.DOCKERHUB_USERNAME }}/ecr-prometheus-exporter:latest
-        build-args: |
-          VERSION=${{ steps.version.outputs.VERSION }}
+          ${{ secrets.DOCKERHUB_USERNAME }}/ecr-exporter:${{ steps.version.outputs.VERSION }}
+          ${{ secrets.DOCKERHUB_USERNAME }}/ecr-exporter:latest
+
+    - name: Generate artifact attestation
+      uses: actions/attest-build-provenance@v2
+      with:
+        subject-name: index.docker.io/${{ secrets.DOCKERHUB_USERNAME }}/ecr-exporter
+        subject-digest: ${{ steps.push.outputs.digest }}
+        push-to-registry: true
 
     - name: Create Release
       uses: softprops/action-gh-release@v1
