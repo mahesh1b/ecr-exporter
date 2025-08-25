@@ -26,15 +26,17 @@ const (
 var (
 	log       = logrus.New()
 	startTime = time.Now()
+	version   = "dev" // Will be set during build
 )
 
 type HealthStatus struct {
-	Status    string            `json:"status"`
-	Uptime    string            `json:"uptime"`
-	Memory    MemoryStats       `json:"memory"`
-	CPU       CPUStats          `json:"cpu"`
-	Goroutines int              `json:"goroutines"`
-	Timestamp string            `json:"timestamp"`
+	Status     string      `json:"status"`
+	Version    string      `json:"version"`
+	Uptime     string      `json:"uptime"`
+	Memory     MemoryStats `json:"memory"`
+	CPU        CPUStats    `json:"cpu"`
+	Goroutines int         `json:"goroutines"`
+	Timestamp  string      `json:"timestamp"`
 }
 
 type MemoryStats struct {
@@ -57,6 +59,7 @@ func getHealthStatus() HealthStatus {
 
 	return HealthStatus{
 		Status:     "OK",
+		Version:    version,
 		Uptime:     uptime.String(),
 		Goroutines: runtime.NumGoroutine(),
 		Timestamp:  time.Now().Format(time.RFC3339),
@@ -85,7 +88,7 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 	} else {
 		w.Header().Set("Content-Type", "text/html")
 		w.WriteHeader(http.StatusOK)
-		
+
 		html := fmt.Sprintf(`
 <!DOCTYPE html>
 <html>
@@ -109,6 +112,7 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 <body>
     <h1>ECR Prometheus Exporter Health Status</h1>
     <p class="status">Status: %s</p>
+    <p>Version: <span class="value">%s</span></p>
     <p>Last Updated: %s</p>
     
     <h2>System Metrics</h2>
@@ -136,6 +140,7 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 </body>
 </html>`,
 			health.Status,
+			health.Version,
 			health.Timestamp,
 			health.Uptime,
 			health.Goroutines,
@@ -145,7 +150,7 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 			health.Memory.SysMB,
 			health.Memory.NumGC,
 		)
-		
+
 		w.Write([]byte(html))
 	}
 }
@@ -210,7 +215,7 @@ func main() {
 	log.Info("Testing AWS connectivity...")
 	testCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	
+
 	_, err = ecrClient.DescribeRepositories(testCtx, &ecr.DescribeRepositoriesInput{
 		MaxResults: aws.Int32(1),
 	})
