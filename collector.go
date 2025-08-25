@@ -14,15 +14,15 @@ type ECRCollector struct {
 	client *ecr.Client
 
 	// Metrics
-	repoCount          *prometheus.Desc
-	imageCount         *prometheus.Desc
-	imageSizeMax       *prometheus.Desc
-	imageSizeMin       *prometheus.Desc
-	imageSizeAvg       *prometheus.Desc
-	latestPushTime     *prometheus.Desc
-	latestPullTime     *prometheus.Desc
-	scrapeErrors       *prometheus.Desc
-	scrapeDuration     *prometheus.Desc
+	repoCount      *prometheus.Desc
+	imageCount     *prometheus.Desc
+	imageSizeMax   *prometheus.Desc
+	imageSizeMin   *prometheus.Desc
+	imageSizeAvg   *prometheus.Desc
+	latestPushTime *prometheus.Desc
+	latestPullTime *prometheus.Desc
+	scrapeErrors   *prometheus.Desc
+	scrapeDuration *prometheus.Desc
 }
 
 func NewECRCollector(client *ecr.Client) *ECRCollector {
@@ -158,7 +158,7 @@ func (c *ECRCollector) getAllRepositories(ctx context.Context) ([]types.Reposito
 	var nextToken *string
 
 	log.Debug("Starting to fetch repositories")
-	
+
 	for {
 		input := &ecr.DescribeRepositoriesInput{
 			NextToken: nextToken,
@@ -239,21 +239,33 @@ func (c *ECRCollector) collectRepositoryMetrics(ctx context.Context, repo types.
 		return
 	}
 
+	log.Debugf("Processing %d images for timestamps and sizes in repository: %s", len(images), repoName)
+
 	// Calculate size metrics
 	var sizes []int64
-	var latestPush, latestPull time.Time
+	var latestPush, latestPull *time.Time
 
 	for _, image := range images {
 		if image.ImageSizeInBytes != nil {
 			sizes = append(sizes, *image.ImageSizeInBytes)
 		}
 
-		if image.ImagePushedAt != nil && image.ImagePushedAt.After(latestPush) {
-			latestPush = *image.ImagePushedAt
+		// Handle push timestamp - find the latest one
+		if image.ImagePushedAt != nil {
+			pushTime := *image.ImagePushedAt
+			if latestPush == nil || pushTime.After(*latestPush) {
+				latestPush = &pushTime
+				log.Debugf("Repository %s: Found newer push time: %v (Unix: %d)", repoName, pushTime, pushTime.Unix())
+			}
 		}
 
-		if image.LastRecordedPullTime != nil && image.LastRecordedPullTime.After(latestPull) {
-			latestPull = *image.LastRecordedPullTime
+		// Handle pull timestamp - find the latest one
+		if image.LastRecordedPullTime != nil {
+			pullTime := *image.LastRecordedPullTime
+			if latestPull == nil || pullTime.After(*latestPull) {
+				latestPull = &pullTime
+				log.Debugf("Repository %s: Found newer pull time: %v (Unix: %d)", repoName, pullTime, pullTime.Unix())
+			}
 		}
 	}
 
@@ -293,23 +305,29 @@ func (c *ECRCollector) collectRepositoryMetrics(ctx context.Context, repo types.
 	}
 
 	// Latest push time
-	if !latestPush.IsZero() {
+	if latestPush != nil {
+		log.Debugf("Repository %s: Sending latest push timestamp: %v (Unix: %d)", repoName, *latestPush, latestPush.Unix())
 		ch <- prometheus.MustNewConstMetric(
 			c.latestPushTime,
 			prometheus.GaugeValue,
 			float64(latestPush.Unix()),
 			labels...,
 		)
+	} else {
+		log.Debugf("Repository %s: No push timestamps found", repoName)
 	}
 
 	// Latest pull time
-	if !latestPull.IsZero() {
+	if latestPull != nil {
+		log.Debugf("Repository %s: Sending latest pull timestamp: %v (Unix: %d)", repoName, *latestPull, latestPull.Unix())
 		ch <- prometheus.MustNewConstMetric(
 			c.latestPullTime,
 			prometheus.GaugeValue,
 			float64(latestPull.Unix()),
 			labels...,
 		)
+	} else {
+		log.Debugf("Repository %s: No pull timestamps found", repoName)
 	}
 
 	log.Debugf("Finished processing repository: %s", repoName)
@@ -320,7 +338,7 @@ func (c *ECRCollector) getRepositoryImages(ctx context.Context, repoName string)
 	var nextToken *string
 
 	log.Debugf("Starting to fetch images for repository: %s", repoName)
-	
+
 	for {
 		input := &ecr.DescribeImagesInput{
 			RepositoryName: &repoName,
