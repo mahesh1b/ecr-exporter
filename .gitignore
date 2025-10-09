@@ -4,8 +4,6 @@
 *.dll
 *.so
 *.dylib
-ecr-prometheus-exporter
-ecr-exporter
 
 # Test binary, built with `go test -c`
 *.test
