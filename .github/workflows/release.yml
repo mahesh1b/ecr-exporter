@@ -27,11 +27,6 @@ jobs:
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
 
-    - name: Configure Git user
-      run: |
-        git config user.name "$GITHUB_ACTOR"
-        git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
-
     - name: Login to DockerHub
       uses: docker/login-action@v3
       with:
@@ -84,12 +79,11 @@ jobs:
         subject-digest: ${{ steps.push.outputs.digest }}
         push-to-registry: true
 
-    - name: Publish Helm Chart
-      uses: helm/chart-releaser-action@v1.7.0
-      with:
-        charts_dir: charts
-      env:
-        CR_TOKEN: "${{ secrets.GHA_TOKEN }}"
+    - name: Helm release
+      run: |
+        helm package charts/ecr-exporter --version ${{ steps.version.outputs.VERSION }} --app-version ${{ steps.version.outputs.VERSION }}
+        helm registry login docker.io -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_TOKEN }}
+        helm push ecr-exporter-${{ steps.version.outputs.VERSION }}.tgz oci://registry-1.docker.io/${{ secrets.DOCKERHUB_USERNAME }}
 
     - name: Create Release
       uses: softprops/action-gh-release@v1
